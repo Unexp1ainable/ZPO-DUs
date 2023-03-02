@@ -32,8 +32,8 @@ int rgb2gray(Mat& bgr, Mat& gray)
 	/* ***** Working area - begin ***** */
 	for (int y = 0; y < bgr.rows; y++) {
 		for (int x = 0; x < bgr.cols; x++) {
-			auto color = bgr.at<Vec3b>(x, y);
-			gray.at<uint8_t>(x, y) = std::lround(0.299 * color[0] + 0.587 * color[1] + 0.114 * color[2]);
+			auto color = bgr.at<Vec3b>(y, x);
+			gray.at<uint8_t>(y, x) = std::lround(0.299 * color[0] + 0.587 * color[1] + 0.114 * color[2]);
 		}
 	}
 
@@ -76,11 +76,11 @@ int convolution(cv::Mat& gray, const cv::Mat& kernel, cv::Mat& dst)
 			float computed = 0;
 			for (int dx = -1; dx < 2; dx++) {
 				for (int dy = -1; dy < 2; dy++) {
-					computed += gray.at<uint8_t>(x + dx, y + dy) * kernel.at<float>(-dx + 1, -dy + 1);
+					computed += gray.at<uint8_t>(y + dy, x + dx) * kernel.at<float>(-dy + 1, -dx + 1);
 				}
 			}
 
-			dst.at<float>(x, y) = computed;
+			dst.at<float>(y, x) = computed;
 		}
 	}
 
