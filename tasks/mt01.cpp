@@ -11,7 +11,7 @@ using namespace std;
 using namespace cv;
 
 /*---------------------------------------------------------------------------
-TASK 1 
+TASK 1
 	!! Only add code to the reserved places.
 	!! The resulting program must not print anything extra on any output (nothing more than the prepared program framework).
 */
@@ -25,53 +25,69 @@ TASK 1
 		Mat:: ... rows, cols, step(), size(), at<>(), zeros(), ones(), eye()
 
 */
-int rgb2gray( Mat& bgr, Mat& gray )
+int rgb2gray(Mat& bgr, Mat& gray)
 {
-	gray = cv::Mat::zeros( bgr.size(), CV_8UC1 );
+	gray = cv::Mat::zeros(bgr.size(), CV_8UC1);
 
 	/* ***** Working area - begin ***** */
 	for (int y = 0; y < bgr.rows; y++) {
 		for (int x = 0; x < bgr.cols; x++) {
 			auto color = bgr.at<Vec3b>(x, y);
-			gray.at<uint8_t>(x, y) = 0.299 * color[0] + 0.587 * color[1] + 0.114 * color[2];
+			gray.at<uint8_t>(x, y) = std::lround(0.299 * color[0] + 0.587 * color[1] + 0.114 * color[2]);
 		}
 	}
 
-	
 	/* ***** Working area - end ***** */
 
 	return 0;
 }
 
 
-/* 	TASK 1.2 - Convolution 
+/* 	TASK 1.2 - Convolution
 	The input is a grayscale image (0-255) and a 3x3 float kernel (CV_32FC1).
-    Leave the border values of the resulting image at 0.
+	Leave the border values of the resulting image at 0.
 	Implement manually by passing the image, for each pixel go through its surroundings and perform convolution with a 3x3 core.
-    The resulting value must be normalized.
+	The resulting value must be normalized.
 
 	Allowed Mat attributes, methods and OpenCV functions for task solution are:
 		Mat:: ... rows, cols, step(), size(), at<>(), zeros(), ones(), eye()
-    
-*/
-int convolution( cv::Mat& gray, const cv::Mat& kernel, cv::Mat& dst )
-{
-	dst = cv::Mat::zeros( gray.size(), CV_32FC1 );
 
-	if( kernel.rows != 3 || kernel.cols != 3 )
+*/
+int convolution(cv::Mat& gray, const cv::Mat& kernel, cv::Mat& dst)
+{
+	dst = cv::Mat::zeros(gray.size(), CV_32FC1);
+
+	if (kernel.rows != 3 || kernel.cols != 3)
 		return 1;
 
 	/* *****  Working area - begin ***** */
+	/*
+	iterate over 3x3 neighbourhood of the current point and:
+		1. calculate the convolution of a local area with a convolution kernel
+		2. normalize the result value
+		3. save to the output image
+	*/
 
-		/*
-		iterate over 3x3 neighbourhood of the current point and:
-			1. calculate the convolution of a local area with a convolution kernel
-			2. normalize the result value
-			3. save to the output image
-		*/
+	// iterate over (almost) all pixels
+	for (int y = 1; y < gray.rows - 1; y++) {
+		for (int x = 1; x < gray.cols - 1; x++) {
 
-	
+			// compute convolution on given coordinates
+			float computed = 0;
+			for (int dx = -1; dx < 2; dx++) {
+				for (int dy = -1; dy < 2; dy++) {
+					computed += gray.at<uint8_t>(x + dx, y + dy) * kernel.at<float>(-dx + 1, -dy + 1);
+				}
+			}
 
+			dst.at<float>(x, y) = computed;
+		}
+	}
+
+	// normalize
+	int kernelSum = cv::sum(cv::abs(kernel)).val[0];
+	if (kernelSum != 0)
+		dst = dst / kernelSum;
 	/* ***** Working area - end ***** */
 
 	return 0;
@@ -82,10 +98,10 @@ int convolution( cv::Mat& gray, const cv::Mat& kernel, cv::Mat& dst )
 
 //---------------------------------------------------------------------------
 // support functions
-void checkDifferences( const cv::Mat test, const cv::Mat ref, std::string tag, bool save );
+void checkDifferences(const cv::Mat test, const cv::Mat ref, std::string tag, bool save);
 //---------------------------------------------------------------------------
 
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 	if (argc < 2)
 	{
@@ -95,83 +111,83 @@ int main(int argc, char *argv[])
 
 	// load image, use first argument, load as RGB image
 	Mat img_rgb = imread(argv[1], IMREAD_COLOR);
-	if(img_rgb.empty() )                              
+	if (img_rgb.empty())
 	{
-		cout <<  "Could not open or find the original image" << endl ;
+		cout << "Could not open or find the original image" << endl;
 		return 1;
 	}
 
 	//---------------------------------------------------------------------------
 	// TASK: RGB convert to GRAYSCALE image
-	
+
 	Mat img_gray, img_ref;
-	
+
 	// compute solution using your own function
 	rgb2gray(img_rgb, img_gray);
-	
+
 	// compute reference solution
 	cvtColor(img_rgb, img_ref, cv::COLOR_RGB2GRAY);
 
 	// compute and report differences
-	checkDifferences( img_gray, img_ref, "rgb2gray", true );
+	checkDifferences(img_gray, img_ref, "rgb2gray", true);
 
 
 	//---------------------------------------------------------------------------
 	// TASK: convolution
 
 	float ker[9] = { -1, -2, -1, 0, 0, 0, 1, 2, 1 };
-	cv::Mat kernel( 3, 3, CV_32FC1, ker );
+	cv::Mat kernel(3, 3, CV_32FC1, ker);
 	cv::Mat conv_res, conv_ref;
 
 	img_gray = img_ref;
 
 	// compute solution using your own function
-	convolution( img_gray, kernel, conv_res );
+	convolution(img_gray, kernel, conv_res);
 
 	// compute reference solution
-	cv::flip( kernel, kernel, -1 );
-	cv::filter2D( img_gray, conv_ref, CV_32F, kernel );
+	cv::flip(kernel, kernel, -1);
+	cv::filter2D(img_gray, conv_ref, CV_32F, kernel);
 	// normalize convolution output
-	conv_ref *= 1.f/(cv::sum(abs(kernel)).val[0] + 0.000000001);
+	conv_ref *= 1.f / (cv::sum(abs(kernel)).val[0] + 0.000000001);
 
 	// since the filter2D function also calculates the values at the edges of the output image (and we don't for simplicity)
 	// erase the edge values of the image before comparison
-	cv::rectangle( conv_ref, cv::Point(0,0), cv::Point(conv_ref.cols-1,conv_ref.rows-1), cv::Scalar::all(0), 1 );
+	cv::rectangle(conv_ref, cv::Point(0, 0), cv::Point(conv_ref.cols - 1, conv_ref.rows - 1), cv::Scalar::all(0), 1);
 
 	// compute and report differences
-	checkDifferences( conv_res, conv_ref, "convolution", true );
+	checkDifferences(conv_res, conv_ref, "convolution", true);
 
 	//---------------------------------------------------------------------------
 
-  
+
 	return 0;
 }
-    
+
 
 
 
 //---------------------------------------------------------------------------
-void checkDifferences( const cv::Mat test, const cv::Mat ref, std::string tag, bool save )
+void checkDifferences(const cv::Mat test, const cv::Mat ref, std::string tag, bool save)
 {
 	double mav = 255., err = 255., nonzeros = 1000.;
 
-	if( !test.empty() && !ref.empty() ) {
+	if (!test.empty() && !ref.empty()) {
 		cv::Mat diff;
-		cv::absdiff( test, ref, diff );
-		cv::minMaxLoc( diff, NULL, &mav );
-		nonzeros = 1. * cv::countNonZero( diff ); // / (diff.rows*diff.cols);
-		err = (nonzeros > 0 ? ( cv::sum(diff).val[0] / nonzeros ) : 0);
+		cv::absdiff(test, ref, diff);
+		cv::minMaxLoc(diff, NULL, &mav);
+		nonzeros = 1. * cv::countNonZero(diff); // / (diff.rows*diff.cols);
+		err = (nonzeros > 0 ? (cv::sum(diff).val[0] / nonzeros) : 0);
 
-		if( save ) {
+		if (save) {
 			diff *= 255;
-			cv::imwrite( (tag+".0.ref.png").c_str(), ref );
-			cv::imwrite( (tag+".1.test.png").c_str(), test );
-			cv::imwrite( (tag+".2.diff.png").c_str(), diff );
+			cv::imwrite((tag + ".0.ref.png").c_str(), ref);
+			cv::imwrite((tag + ".1.test.png").c_str(), test);
+			cv::imwrite((tag + ".2.diff.png").c_str(), diff);
 		}
 	}
 
-	printf( "%s_avg_cnt_max, %.1f, %.0f, %.0f, ", tag.c_str(), err, nonzeros, mav );
-	
+	printf("%s_avg_cnt_max, %.1f, %.0f, %.0f, ", tag.c_str(), err, nonzeros, mav);
+
 	return;
 }
 //---------------------------------------------------------------------------
